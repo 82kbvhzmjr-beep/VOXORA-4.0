@@ -1,0 +1,33 @@
+name: Compilar Voxora para Mac
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compilar (Intel + Apple Silicon)
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release -j4
+
+      - name: Preparar instalador
+        run: |
+          mkdir -p out/Voxora
+          cp -R build/Voxora_artefacts/Release/VST3/Voxora.vst3 out/Voxora/
+          cp -R build/Voxora_artefacts/Release/AU/Voxora.component out/Voxora/
+          cp installer/Instalar.command out/Voxora/
+          chmod +x out/Voxora/Instalar.command
+          codesign --force --deep -s - out/Voxora/Voxora.vst3
+          codesign --force --deep -s - out/Voxora/Voxora.component
+          cd out && ditto -c -k --keepParent Voxora ../Voxora-Mac.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Voxora-Mac
+          path: Voxora-Mac.zip
